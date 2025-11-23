@@ -60,4 +60,6 @@ Thumbs.db
 
 .claude/
 .ropeproject/
-docs/
+!docs/
+docs/*
+!docs/wanikani-data.js
