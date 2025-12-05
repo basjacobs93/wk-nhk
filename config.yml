@@ -11,6 +11,7 @@ site:
   title: "WK・NHK"
   description: "NHK Easy News with WaniKani level-based furigana"
   output_dir: "docs"
+  goatcounter_code: "wk-nhk"
 
 github:
   pages_branch: "main"

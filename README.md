@@ -46,6 +46,18 @@ open docs/index.html
 
 The site will be generated in the `docs/` directory.
 
+## Analytics
+
+The site uses [GoatCounter](https://www.goatcounter.com/) for privacy-friendly visitor tracking. To enable:
+
+1. Sign up at [goatcounter.com](https://www.goatcounter.com/)
+2. Add your site code to `config.yml`:
+   ```yaml
+   site:
+     goatcounter_code: "yoursite"  # for yoursite.goatcounter.com
+   ```
+3. The tracking script will be automatically added to all pages
+
 ## Architecture
 
 ### Pipeline Flow

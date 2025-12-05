@@ -14,6 +14,7 @@ class SiteGenerator:
         self.output_dir = Path(self.config["site"]["output_dir"])
         self.site_title = self.config["site"]["title"]
         self.site_description = self.config["site"]["description"]
+        self.goatcounter_code = self.config["site"].get("goatcounter_code", "")
 
         # Create output directory
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -128,6 +129,9 @@ class SiteGenerator:
 
     <script src="wanikani-data.js"></script>
     <script src="script.js"></script>
+    {% if goatcounter_code %}
+    <script data-goatcounter="https://{{ goatcounter_code }}.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+    {% endif %}
 </body>
 </html>"""
 
@@ -144,6 +148,7 @@ class SiteGenerator:
             site_description=self.site_description,
             articles=articles,
             current_time=datetime.now().strftime("%Y年%m月%d日 %H:%M"),
+            goatcounter_code=self.goatcounter_code,
         )
 
         index_path = self.output_dir / "index.html"
@@ -226,6 +231,9 @@ class SiteGenerator:
 
     <script src="wanikani-data.js"></script>
     <script src="script.js"></script>
+    {% if goatcounter_code %}
+    <script data-goatcounter="https://{{ goatcounter_code }}.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+    {% endif %}
 </body>
 </html>"""
 
@@ -235,7 +243,7 @@ class SiteGenerator:
             article.get("title", ""), article.get("url", "")
         )
 
-        html = template.render(site_title=self.site_title, article=article)
+        html = template.render(site_title=self.site_title, article=article, goatcounter_code=self.goatcounter_code)
 
         article_path = self.output_dir / f"{slug}.html"
         with open(article_path, "w", encoding="utf-8") as f:
