@@ -23,7 +23,13 @@ class NHKEasyScraper:
 
         self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+            "Accept": "application/json, text/html, */*",
+            "Accept-Language": "ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Accept-Encoding": "gzip, deflate, br",
+            "DNT": "1",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
         })
 
         # Get fresh authentication token
@@ -50,7 +56,11 @@ class NHKEasyScraper:
         """Get article links from NHK JSON API"""
         try:
             print(f"Fetching article list from JSON API...")
-            response = self.session.get(self.json_url, timeout=self.timeout)
+            # Add referer to make request look more legitimate
+            headers = {
+                "Referer": "https://news.web.nhk/news/easy/",
+            }
+            response = self.session.get(self.json_url, headers=headers, timeout=self.timeout)
             response.raise_for_status()
 
             data = response.json()
