@@ -22,19 +22,58 @@ class NHKAuthenticator:
             print(f"Failed to decode JWT: {e}")
             return None
 
-    def get_fresh_token(self):
+    def get_fresh_token(self, headless=True):
         """
         Accept NHK terms and extract the z_at token.
         NHK automatically generates tokens when users accept their terms of service.
         No login credentials required.
+
+        Args:
+            headless: Run browser in headless mode (default: True for CI/CD)
         """
         print("Starting automated terms acceptance...")
 
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-            )
+            # Use Firefox in headless mode as it's harder to detect
+            # Chromium headless is easily detected by NHK
+            if headless:
+                browser = p.firefox.launch(
+                    headless=True,
+                    firefox_user_prefs={
+                        "dom.webdriver.enabled": False,
+                        "useAutomationExtension": False,
+                        "general.useragent.override": "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0"
+                    }
+                )
+            else:
+                browser = p.chromium.launch(
+                    headless=False,
+                    args=["--disable-blink-features=AutomationControlled"]
+                )
+
+            # Create context with realistic settings
+            if headless:
+                # Firefox headless - minimal config needed
+                context = browser.new_context(
+                    viewport={"width": 1920, "height": 1080},
+                    locale="ja-JP",
+                    timezone_id="Asia/Tokyo",
+                )
+            else:
+                # Chromium - need stealth settings
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                    viewport={"width": 1920, "height": 1080},
+                    locale="ja-JP",
+                    timezone_id="Asia/Tokyo",
+                )
+
+                # Stealth script for Chromium
+                context.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                """)
             page = context.new_page()
 
             try:
@@ -63,12 +102,26 @@ class NHKAuthenticator:
                         button = page.locator(selector).first
                         if button.is_visible(timeout=5000):
                             print(f"Found 'For Users Abroad' button: {selector}")
+                            # Try clicking and wait for the button to disappear
                             button.click()
-                            abroad_button_clicked = True
                             print("✓ Clicked 'I understand' button")
+
+                            # Wait for the button to disappear (indicating dialog closed)
+                            try:
+                                button.wait_for(state="hidden", timeout=10000)
+                                print("✓ Dialog dismissed successfully")
+                                abroad_button_clicked = True
+                            except:
+                                print("⚠️  Button still visible after click, trying force click")
+                                # Try force click if regular click didn't work
+                                button.click(force=True)
+                                page.wait_for_timeout(2000)
+                                abroad_button_clicked = True
+
                             page.wait_for_load_state("networkidle", timeout=30000)
                             break
                     except Exception as e:
+                        print(f"Error with selector {selector}: {e}")
                         continue
 
                 # Now look for any additional terms acceptance dialogs
@@ -122,8 +175,38 @@ class NHKAuthenticator:
                 else:
                     print("No dialogs found, token may already be set...")
 
+                # Additional wait to ensure cookies are set
+                print("Waiting additional time for cookies to be set...")
+                page.wait_for_timeout(3000)
+
                 # Extract cookies
-                cookies = context.cookies()
+                current_url = page.url
+
+                # Try multiple URLs that might have the cookie
+                urls_to_try = [
+                    current_url,
+                    "https://news.web.nhk",
+                    "https://news.web.nhk/",
+                    "https://news.web.nhk/news/easy/",
+                ]
+
+                cookies = []
+                for url in urls_to_try:
+                    try:
+                        url_cookies = context.cookies(urls=[url])
+                        if url_cookies:
+                            cookies.extend(url_cookies)
+                    except Exception:
+                        pass
+
+                # Deduplicate cookies by name
+                seen_names = set()
+                unique_cookies = []
+                for cookie in cookies:
+                    if cookie["name"] not in seen_names:
+                        seen_names.add(cookie["name"])
+                        unique_cookies.append(cookie)
+                cookies = unique_cookies
 
                 # Find the z_at token
                 z_at_token = None
@@ -166,10 +249,10 @@ class NHKAuthenticator:
                 browser.close()
 
 
-def get_nhk_token():
+def get_nhk_token(headless=True):
     """Convenience function to get a fresh NHK token"""
     authenticator = NHKAuthenticator()
-    return authenticator.get_fresh_token()
+    return authenticator.get_fresh_token(headless=headless)
 
 
 if __name__ == "__main__":
