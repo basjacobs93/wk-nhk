@@ -30,9 +30,13 @@ class NHKEasyScraper:
         print("Obtaining fresh authentication token...")
         try:
             token = get_nhk_token()
-            self.session.headers.update({
-                "Cookie": f"z_at={token}"
-            })
+            # Set cookie properly using session.cookies.set() with correct domain
+            self.session.cookies.set(
+                name="z_at",
+                value=token,
+                domain=".web.nhk",
+                path="/"
+            )
             print("✅ Authentication token set successfully")
         except Exception as e:
             print(f"⚠️  Failed to obtain authentication token: {e}")
