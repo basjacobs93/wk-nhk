@@ -67,11 +67,12 @@ class SiteGenerator:
 
             <div class="controls">
                 <div class="level-control">
-                    <label for="level-slider" class="level-label">
-                        <span>WaniKani Level: </span>
-                        <span id="level-value" class="level-value">10</span>
-                    </label>
-                    <input type="range" id="level-slider" min="0" max="60" value="10" class="level-slider">
+                    <label for="level-input" class="level-label">WaniKani Level</label>
+                    <div class="level-stepper">
+                        <button type="button" id="level-dec" class="level-btn" aria-label="Decrease level">&minus;</button>
+                        <input type="number" id="level-input" class="level-input" min="0" max="60" value="10" inputmode="numeric" pattern="[0-9]*">
+                        <button type="button" id="level-inc" class="level-btn" aria-label="Increase level">+</button>
+                    </div>
                 </div>
 
                 <label class="toggle-label">
@@ -179,11 +180,12 @@ class SiteGenerator:
 
             <div class="controls">
                 <div class="level-control">
-                    <label for="level-slider" class="level-label">
-                        <span>WaniKani Level: </span>
-                        <span id="level-value" class="level-value">10</span>
-                    </label>
-                    <input type="range" id="level-slider" min="0" max="60" value="10" class="level-slider">
+                    <label for="level-input" class="level-label">WaniKani Level</label>
+                    <div class="level-stepper">
+                        <button type="button" id="level-dec" class="level-btn" aria-label="Decrease level">&minus;</button>
+                        <input type="number" id="level-input" class="level-input" min="0" max="60" value="10" inputmode="numeric" pattern="[0-9]*">
+                        <button type="button" id="level-inc" class="level-btn" aria-label="Increase level">+</button>
+                    </div>
                 </div>
 
                 <label class="toggle-label">
@@ -342,47 +344,63 @@ body {
 .level-label {
     font-size: 0.9rem;
     font-weight: 400;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
     white-space: nowrap;
 }
 
-.level-value {
+.level-stepper {
+    display: flex;
+    align-items: center;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.2);
+    overflow: hidden;
+}
+
+.level-btn {
+    width: 40px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.level-btn:hover,
+.level-btn:active {
+    background: rgba(255,255,255,0.2);
+}
+
+.level-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    background: transparent;
+}
+
+.level-input {
+    width: 3rem;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
     font-weight: 600;
     font-size: 1rem;
-    min-width: 1.5rem;
     text-align: center;
+    -moz-appearance: textfield;
 }
 
-.level-slider {
-    width: 200px;
-    height: 6px;
-    border-radius: 3px;
-    background: rgba(255,255,255,0.3);
+.level-input::-webkit-outer-spin-button,
+.level-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.level-input:focus {
     outline: none;
-    -webkit-appearance: none;
-}
-
-.level-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: white;
-    cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-
-.level-slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: white;
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.15);
 }
 
 .toggle-label {
@@ -707,11 +725,6 @@ ruby.show-furigana rt {
         width: 100%;
     }
 
-    .level-slider {
-        width: 100%;
-        max-width: 300px;
-    }
-
     .site-header h1 {
         font-size: 1.3rem;
     }
@@ -764,27 +777,49 @@ ruby.show-furigana rt {
         """Generate JavaScript file"""
         js_content = """// Level-based furigana control
 document.addEventListener('DOMContentLoaded', function() {
-    const levelSlider = document.getElementById('level-slider');
-    const levelValue = document.getElementById('level-value');
+    const levelInput = document.getElementById('level-input');
+    const levelDec = document.getElementById('level-dec');
+    const levelInc = document.getElementById('level-inc');
     const showAllToggle = document.getElementById('show-all-toggle');
+    const MIN_LEVEL = 0;
+    const MAX_LEVEL = 60;
 
-    // Load saved level preference (default: 10)
-    const savedLevel = localStorage.getItem('waniKaniLevel') || '10';
-    levelSlider.value = savedLevel;
-    levelValue.textContent = savedLevel;
+    function clampLevel(value) {
+        const n = parseInt(value, 10);
+        if (isNaN(n)) return null;
+        return Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, n));
+    }
+
+    function setLevel(value) {
+        const level = clampLevel(value);
+        if (level === null) return;
+        levelInput.value = level;
+        levelDec.disabled = level <= MIN_LEVEL;
+        levelInc.disabled = level >= MAX_LEVEL;
+        localStorage.setItem('waniKaniLevel', level);
+        updateFuriganaDisplay();
+    }
 
     // Load show all toggle preference
     const showAll = localStorage.getItem('showAllFurigana') === 'true';
     showAllToggle.checked = showAll;
 
-    // Apply furigana display based on current settings
-    updateFuriganaDisplay();
+    // Load saved level preference (default: 10) and apply furigana display
+    setLevel(localStorage.getItem('waniKaniLevel') || '10');
 
-    // Level slider change
-    levelSlider.addEventListener('input', function() {
-        levelValue.textContent = this.value;
-        localStorage.setItem('waniKaniLevel', this.value);
-        updateFuriganaDisplay();
+    levelDec.addEventListener('click', () => setLevel(parseInt(levelInput.value, 10) - 1));
+    levelInc.addEventListener('click', () => setLevel(parseInt(levelInput.value, 10) + 1));
+
+    // Typed input: update live while valid, normalise on blur/enter
+    levelInput.addEventListener('input', function() {
+        if (this.value !== '') setLevel(this.value);
+    });
+    levelInput.addEventListener('focus', function() { this.select(); });
+    levelInput.addEventListener('change', function() {
+        setLevel(this.value === '' ? (localStorage.getItem('waniKaniLevel') || '10') : this.value);
+    });
+    levelInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') this.blur();
     });
 
     // Show all toggle change
@@ -794,7 +829,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function updateFuriganaDisplay() {
-        const level = parseInt(levelSlider.value);
+        const level = clampLevel(levelInput.value) ?? 10;
         const showAll = showAllToggle.checked;
 
         // Get all ruby elements with data-level attribute
