@@ -14,6 +14,14 @@ from site_generator import SiteGenerator
 from wanikani_levels import WaniKaniLevels
 
 
+def fail(message):
+    """Abort the pipeline with a non-zero exit, surfaced as an error annotation in GitHub Actions."""
+    print(f"   ❌ {message}")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::error title=NHK pipeline failed::{message}")
+    sys.exit(1)
+
+
 def main():
     """Main pipeline to scrape, process, and generate the site"""
     print("=== NHK Easy News Pipeline ===")
@@ -40,15 +48,13 @@ def main():
         articles = scraper.scrape_all()
 
         if not articles:
-            print("   No articles scraped. Exiting.")
-            return
+            fail("No articles scraped (0 pages). Check NHK auth and the news-list API.")
 
         # Save raw articles
         scraper.save_articles(articles, "data/articles.json")
 
     except Exception as e:
-        print(f"   Error scraping articles: {e}")
-        return
+        fail(f"Error scraping articles: {e}")
 
     try:
         # Step 3: Process articles with furigana
@@ -82,8 +88,10 @@ def main():
         print(f"   Saved {len(processed_articles)} processed articles to {processed_path}")
 
     except Exception as e:
-        print(f"   Error processing articles: {e}")
-        return
+        fail(f"Error processing articles: {e}")
+
+    if not processed_articles:
+        fail(f"All {len(articles)} scraped articles failed furigana processing (0 pages to publish).")
 
     try:
         # Step 4: Generate static site
@@ -96,8 +104,7 @@ def main():
         print("You can now deploy the 'docs' directory to GitHub Pages.")
 
     except Exception as e:
-        print(f"   Error generating site: {e}")
-        return
+        fail(f"Error generating site: {e}")
 
 
 if __name__ == "__main__":

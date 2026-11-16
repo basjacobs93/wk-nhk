@@ -55,6 +55,19 @@ jobs:
         run: |
           uv run python src/main.py
 
+      - name: Verify site was generated
+        run: |
+          if [ ! -f docs/index.html ]; then
+            echo "::error title=Refusing to deploy::docs/index.html missing"
+            exit 1
+          fi
+          pages=$(find docs -maxdepth 1 -name '*.html' ! -name index.html | wc -l)
+          echo "Generated $pages article pages"
+          if [ "$pages" -eq 0 ]; then
+            echo "::error title=Refusing to deploy::0 article pages generated"
+            exit 1
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

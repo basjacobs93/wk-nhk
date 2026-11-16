@@ -45,8 +45,8 @@ class NHKEasyScraper:
             )
             print("✅ Authentication token set successfully")
         except Exception as e:
-            print(f"⚠️  Failed to obtain authentication token: {e}")
-            print("Proceeding without authentication (may fail)...")
+            # Without the token the API returns 401, so fail fast with a clear cause
+            raise RuntimeError(f"Failed to obtain NHK authentication token: {e}") from e
 
         # Create images directory
         self.images_dir = Path("docs/images")

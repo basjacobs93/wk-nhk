@@ -85,11 +85,16 @@ class NHKAuthenticator:
 
                 print("Looking for 'For Users Abroad' dialog...")
 
-                # Wait a bit for JavaScript to render the dialog
-                page.wait_for_timeout(2000)
+                # Wait for JavaScript to render the dialog (NHK ONE renders it late)
+                try:
+                    page.locator("button:has-text('確認して進む'), button:has-text('確認しました')").first.wait_for(state="visible", timeout=15000)
+                except PlaywrightTimeoutError:
+                    pass
 
                 # First, handle the "For Users Abroad" dialog
                 abroad_button_selectors = [
+                    "button:has-text('確認して進む')",
+                    "button:has-text('Continue')",
                     "button:has-text('確認しました')",
                     "button:has-text('I understand')",
                     "text=確認しました",
